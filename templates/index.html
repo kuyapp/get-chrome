@@ -1,0 +1,10 @@
+<!doctype html>
+<title>Get Google Chrome Installer</title>
+<ul>
+    {% for channel, channel_links in links.iteritems() %}
+        {{channel}}
+        {% for link in channel_links %}
+            <li>{{link}}</li>
+        {% endfor %}
+    {% endfor %}
+</ul>
