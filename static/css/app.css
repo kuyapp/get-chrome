@@ -1,0 +1,16 @@
+/* Custom page header */
+.header {
+  border-bottom: 1px solid #e5e5e5;
+}
+
+/* Customize container */
+.container {
+    max-width: 900px;
+}
+
+/* Custom page footer */
+.footer {
+  padding-top: 10px;
+  color: #777;
+  border-top: 1px solid #e5e5e5;
+}
