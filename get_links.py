@@ -16,7 +16,7 @@ APP_STATIC = os.path.join(APP_ROOT, 'static')
 with open(os.path.join(APP_STATIC, 'post_data_stable.xml')) as f:
     POST_DATA_STABLE = f.read().replace('\n', '')
 
-with open(os.path.join(APP_STATIC, 'post_data_stable.xml')) as f:
+with open(os.path.join(APP_STATIC, 'post_data_beta.xml')) as f:
     POST_DATA_BETA = f.read().replace('\n', '')
 
 with open(os.path.join(APP_STATIC, 'post_data_dev.xml')) as f:
