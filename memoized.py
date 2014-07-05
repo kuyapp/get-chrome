@@ -1,29 +1,35 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 
+import os
 import time
-import functools
+from werkzeug.contrib.cache import MemcachedCache
+from pylibmc import Client
+
+current_milli_time = lambda: int(round(time.time() * 1000))
 
 
 class Memoized(object):
-    def __init__(self, func, duration=60):
+
+    def __init__(self, func):
+        memcache_servers = os.environ.get('MEMCACHIER_SERVERS', '')
+        memcache_username = os.environ.get('MEMCACHIER_USERNAME', '')
+        memcache_password = os.environ.get('MEMCACHIER_PASSWORD', '')
+        client = Client([memcache_servers], behaviors={"tcp_nodelay": True},
+                        binary=True, username=memcache_username, password=memcache_password)
+        self.cache = MemcachedCache(client, default_timeout=60)
         self.func = func
-        self.duration = duration
-        self.timeStamp = 0
-        self.cache = {}
 
     def __call__(self, *args):
-        timeout = self.timeStamp + self.duration < time.time()
-        if args not in self.cache or timeout:
+        start_time = current_milli_time()
+        value = self.cache.get(*args)
+        if value is None:
             value = self.func(*args)
-            self.cache[args] = value
-            self.timeStamp = time.time()
-            return value
+            self.cache.set(args[0], value)
+            print 'miss', args[0]
         else:
-            return self.cache[args]
+            print 'hit ', args[0]
+        end_time = current_milli_time()
 
-    def __repr__(self):
-        return self.func.__doc__
-
-    def __get__(self, obj):
-        return functools.partial(self.__call__, obj)
+        print 'cost {time}'.format(time=end_time-start_time)
+        return value

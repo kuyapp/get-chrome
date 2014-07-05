@@ -28,22 +28,20 @@ post_data = OrderedDict([('stable', POST_DATA_STABLE),
 
 
 @Memoized
+def get_response(channel):
+    r = requests.post(API_URL, data=post_data[channel])
+    root = objectify.fromstring(r.text.encode('utf-8'))
+    package = root.app.updatecheck.manifest.packages.package.attrib.get('name')
+    return [i.attrib.get('codebase') + package for i in root.app.updatecheck.urls.url]
+
+
 def get_links(channel):
-    print 'call with %s' % channel
+    result = OrderedDict()
     if channel not in post_data and channel != 'all':
         return None
-    result = OrderedDict()
     for k, v in post_data.iteritems():
         if k == channel or channel == 'all':
-            r = requests.post(API_URL, data=v)
-            root = objectify.fromstring(r.text.encode('utf-8'))
-            package = root.app.updatecheck.manifest. \
-                packages.package.attrib.get('name')
-            channel_links = [
-                i.attrib.get('codebase') + package
-                for i in root.app.updatecheck.urls.url
-            ]
-            result[k] = channel_links
+            result[k] = get_response(k)
     return result
 
 
