@@ -2,9 +2,8 @@
 # -*- coding:utf-8 -*-
 
 import time
-import logging
 from flask import Flask
-from flask import render_template, redirect, url_for
+from flask import render_template, redirect
 from get_links import get_links
 
 app = Flask(__name__)

@@ -5,7 +5,7 @@ import time
 import functools
 
 
-class memoized(object):
+class Memoized(object):
     def __init__(self, func, duration=60):
         self.func = func
         self.duration = duration
@@ -25,5 +25,5 @@ class memoized(object):
     def __repr__(self):
         return self.func.__doc__
 
-    def __get__(self, obj, objtype):
+    def __get__(self, obj):
         return functools.partial(self.__call__, obj)

@@ -1,5 +1,5 @@
 // select url text
-$(document).on('mouseenter', 'pre', function(e) {
+$(document).on('mouseenter', 'pre', function() {
   var doc = document
     , text = $(this).find('code')
     , range, selection;
