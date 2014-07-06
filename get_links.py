@@ -1,16 +1,16 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 
-from lxml import objectify
 import os
 import sys
 from collections import OrderedDict
+from xml.etree.ElementTree import fromstring
 import requests
 from memoized import Memoized
 
 API_URL = 'http://tools.google.com/service/update2'
 
-APP_ROOT = os.path.dirname(os.path.abspath(__file__))   # refers to application_top
+APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 APP_STATIC = os.path.join(APP_ROOT, 'static')
 
 with open(os.path.join(APP_STATIC, 'post_data_stable.xml')) as f:
@@ -30,9 +30,9 @@ post_data = OrderedDict([('stable', POST_DATA_STABLE),
 @Memoized
 def get_response(channel):
     r = requests.post(API_URL, data=post_data[channel])
-    root = objectify.fromstring(r.text.encode('utf-8'))
-    package = root.app.updatecheck.manifest.packages.package.attrib.get('name')
-    return [i.attrib.get('codebase') + package for i in root.app.updatecheck.urls.url]
+    root = fromstring(r.text)
+    package = root.find('app/updatecheck/manifest/packages/package').attrib['name']
+    return [i.attrib['codebase'] + package for i in root.findall('app/updatecheck/urls/url')]
 
 
 def get_links(channel):
