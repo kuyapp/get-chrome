@@ -3,9 +3,9 @@
 
 import os
 import sys
+import urllib2
 from collections import OrderedDict
 from xml.etree.ElementTree import fromstring
-import requests
 from memoized import Memoized
 
 API_URL = 'http://tools.google.com/service/update2'
@@ -29,8 +29,9 @@ post_data = OrderedDict([('stable', POST_DATA_STABLE),
 
 @Memoized
 def get_response(channel):
-    r = requests.post(API_URL, data=post_data[channel])
-    root = fromstring(r.text)
+    req = urllib2.Request(API_URL, post_data[channel])
+    r = urllib2.urlopen(req).read()
+    root = fromstring(r)
     package = root.find('app/updatecheck/manifest/packages/package').attrib['name']
     return [i.attrib['codebase'] + package for i in root.findall('app/updatecheck/urls/url')]
 
