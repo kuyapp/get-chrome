@@ -4,18 +4,18 @@ A heroku app that get latest Chrome installer URLs.
 
 ###Examples
 
-####Get stable channel:
+Get stable channel:
 
 http://get-chrome.herokuapp.com/channel/stable
 
-####Get beta channel:
+Get beta channel:
 
 http://get-chrome.herokuapp.com/channel/beta
 
-####Get dev channel:
+Get dev channel:
 
 http://get-chrome.herokuapp.com/channel/dev
 
-####Get all channel:
+Get all channel:
 
 http://get-chrome.herokuapp.com/channel/all
