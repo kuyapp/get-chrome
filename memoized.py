@@ -15,8 +15,11 @@ class Memoized(object):
         memcache_servers = os.environ.get('MEMCACHIER_SERVERS', '')
         memcache_username = os.environ.get('MEMCACHIER_USERNAME', '')
         memcache_password = os.environ.get('MEMCACHIER_PASSWORD', '')
-        client = Client([memcache_servers], behaviors={"tcp_nodelay": True},
-                        binary=True, username=memcache_username, password=memcache_password)
+        if memcache_servers:
+            client = Client([memcache_servers], behaviors={"tcp_nodelay": True},
+                            binary=True, username=memcache_username, password=memcache_password)
+        else:
+            client = Client(['127.0.0.1:11211'])
         self.cache = MemcachedCache(client, default_timeout=60)
         self.func = func
 
