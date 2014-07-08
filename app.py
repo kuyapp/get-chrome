@@ -38,7 +38,6 @@ if MEMCACHE_SERVERS:
 else:
     client = Client(['127.0.0.1:11211'])
 cache = MemcachedCache(client, default_timeout=60)
-logger = app.logger
 
 
 def cached(timeout=60):
@@ -48,9 +47,9 @@ def cached(timeout=60):
             key = args[0]
             rv = cache.get(key)
             if rv is not None:
-                logger.debug('hit\t\t%s', key)
+                print 'hit\t\t', key
                 return rv
-            logger.debug('miss\t\t%s', key)
+            print 'miss\t\t', key
             rv = f(*args, **kwargs)
             cache.set(key, rv, timeout=timeout)
             return rv
