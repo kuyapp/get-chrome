@@ -1,6 +1,7 @@
 Get Chrome Installer
 --------------------
 [![Build Status]][Travis CI]
+
 A heroku app that get latest Chrome installer URLs.
 
 ###Examples
