@@ -1,5 +1,6 @@
 Get Chrome Installer
 --------------------
+[![Build Status]][Travis CI]
 A heroku app that get latest Chrome installer URLs.
 
 ###Examples
@@ -19,3 +20,6 @@ http://get-chrome.herokuapp.com/channel/dev
 Get all channel:
 
 http://get-chrome.herokuapp.com/channel/all
+
+[Build Status]: https://img.shields.io/travis/kuyapp/get-chrome/master.svg?style=flat
+[Travis CI]:    https://travis-ci.org/kuyapp/get-chrome
