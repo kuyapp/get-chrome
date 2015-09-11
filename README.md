@@ -22,5 +22,11 @@ Get all channel:
 
 http://get-chrome.herokuapp.com/channel/all
 
+```
+@echo off
+start "chrome" "%~dp0Chrome-Bin\chrome.exe" --no-first-run --disable-plugins-discovery --extra-plugin-dir="%~dp0Plugins" --User-data-dir="%~dp0Data" --disk-cache-dir="%USERPROFILE%\ChromeCache" --disable-directwrite-for-ui
+@echo on
+```
+
 [Build Status]: https://img.shields.io/travis/kuyapp/get-chrome/master.svg?style=flat
 [Travis CI]:    https://travis-ci.org/kuyapp/get-chrome
