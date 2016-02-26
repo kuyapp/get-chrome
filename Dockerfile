@@ -1,11 +1,14 @@
 FROM python:2-alpine
 
-RUN apk add --update build-base zlib-dev libmemcached-dev && rm -rf /var/cache/apk/*
-
 RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app
 
+RUN apk --update add libmemcached-dev
+
 COPY requirements.txt /usr/src/app/
-RUN pip install --no-cache-dir -r requirements.txt
+
+RUN apk --update add  --virtual build-dependencies build-base zlib-dev \
+    && pip install --no-cache-dir -r requirements.txt \
+    && apk del build-dependencies
 
 COPY . /usr/src/app
