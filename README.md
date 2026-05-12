@@ -1,12 +1,34 @@
 Get Chrome Installer
 ====================
 
-A small Flask app that returns current Google Chrome installer URLs for Windows
-stable, beta, and dev channels.
+A small Flask service that returns current Google Chrome installer URLs for
+Windows stable, beta, and dev channels.
 
-The app posts the Google Update request payloads in `static/post_data_*.xml` to
-Google Update, parses the response, and renders the returned installer URLs.
-Responses are cached in memory for 60 seconds by default.
+The service posts the Google Update request payloads in `static/post_data_*.xml`
+to Google Update, parses the XML response, and renders the returned installer
+URLs. Responses are cached in memory for 60 seconds by default.
+
+Architecture and technology choices
+-----------------------------------
+
+This project is intentionally kept small, but it is now structured as a layered
+Python application instead of a single script:
+
+* **Flask web adapter** (`get_chrome/web.py`) owns routing, rendering, redirects,
+  and HTTP error responses.
+* **Use-case/service layer** (`get_chrome/service.py`) coordinates channel
+  selection, cache lookups, Google Update calls, and URL parsing.
+* **Google Update client** (`get_chrome/google_update.py`) owns outbound HTTP,
+  request payload loading, XML parsing, and provider-specific exceptions.
+* **Configuration layer** (`get_chrome/config.py`) reads and validates environment
+  variables into a typed `Config` object.
+* **Cache layer** (`get_chrome/cache.py`) provides a tiny in-process TTL cache.
+
+The app stays on Flask rather than moving to a heavier framework because the
+feature set is a simple server-rendered page with a few routes. It uses the
+Python standard library for outbound HTTP to avoid pulling in another dependency
+for one POST request. The cache is process-local because only three channel
+lookups are cached and the service should run without external infrastructure.
 
 Endpoints
 ---------
