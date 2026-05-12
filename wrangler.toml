@@ -1,0 +1,8 @@
+name = "get-chrome"
+main = "src/index.ts"
+compatibility_date = "2026-05-12"
+
+[vars]
+GOOGLE_UPDATE_URL = "https://tools.google.com/service/update2"
+CACHE_TTL_SECONDS = "60"
+URL_TIMEOUT_SECONDS = "20"
