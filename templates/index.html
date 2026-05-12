@@ -15,7 +15,7 @@
     	</div>
     	<div class="row clearfix">
 			<div class="col-lg-12">
-                {% for channel, channel_links in links.iteritems() %}
+                {% for channel, channel_links in links.items() %}
     				<h4>{{channel}}</h4>
                     {% for link in channel_links %}
          				<pre><code>{{link}}</code></pre>
