@@ -1,33 +1,55 @@
 Get Chrome Installer
---------------------
-[![Build Status]][Travis CI]
+====================
 
-A heroku app that get latest Chrome installer URLs.
+A small Flask app that returns current Google Chrome installer URLs for Windows
+stable, beta, and dev channels.
 
-###Examples
+The app posts the Google Update request payloads in `static/post_data_*.xml` to
+Google Update, parses the response, and renders the returned installer URLs.
+Responses are cached in memory for 60 seconds by default.
 
-Get stable channel:
+Endpoints
+---------
 
-http://get-chrome.herokuapp.com/channel/stable
+* `/` or `/channel/stable` - stable channel installer URLs
+* `/channel/beta` - beta channel installer URLs
+* `/channel/dev` - dev channel installer URLs
+* `/channel/all` - stable, beta, and dev installer URLs
 
-Get beta channel:
+Configuration
+-------------
 
-http://get-chrome.herokuapp.com/channel/beta
+Environment variables:
 
-Get dev channel:
+* `GOOGLE_UPDATE_URL` - Google Update endpoint. Defaults to
+  `https://tools.google.com/service/update2`.
+* `CACHE_TTL_SECONDS` - in-memory cache TTL. Defaults to `60`.
+* `URL_TIMEOUT_SECONDS` - outbound Google Update request timeout. Defaults to
+  `20`.
+* `PORT` - development server port when running `python app.py`. Defaults to
+  `5000`.
 
-http://get-chrome.herokuapp.com/channel/dev
+Run locally
+-----------
 
-Get all channel:
-
-http://get-chrome.herokuapp.com/channel/all
-
-###How to use
+```bash
+python -m venv .venv
+. .venv/bin/activate
+pip install -r requirements.txt
+flask --app app run
 ```
-@echo off
-start "chrome" "%~dp0Chrome-Bin\chrome.exe" --no-first-run --disable-plugins-discovery --extra-plugin-dir="%~dp0Plugins" --User-data-dir="%~dp0Data" --disk-cache-dir="%USERPROFILE%\ChromeCache" --disable-directwrite-for-ui
-@echo on
+
+Run with Docker
+---------------
+
+```bash
+docker build -t get-chrome .
+docker run --rm -p 5000:5000 get-chrome
 ```
 
-[Build Status]: https://img.shields.io/travis/kuyapp/get-chrome/master.svg?style=flat
-[Travis CI]:    https://travis-ci.org/kuyapp/get-chrome
+Test
+----
+
+```bash
+python -m unittest
+```

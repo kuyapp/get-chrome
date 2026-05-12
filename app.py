@@ -1,86 +1,138 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""Small Flask app that returns current Chrome installer URLs.
+
+The app talks to Google Update using the request payloads in ``static/`` and
+renders the installer URLs for the stable, beta, dev, or all channels.
+"""
+
+from __future__ import annotations
 
 import os
-import urllib2
-from functools import wraps
+import time
 from collections import OrderedDict
-from pylibmc import Client
-from werkzeug.contrib.cache import MemcachedCache
-from flask import Flask, request, render_template, redirect
-from xml.etree.ElementTree import fromstring
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Callable
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
+from xml.etree import ElementTree
+
+from flask import Flask, redirect, render_template
+
+API_URL = os.environ.get("GOOGLE_UPDATE_URL", "https://tools.google.com/service/update2")
+APP_ROOT = Path(__file__).resolve().parent
+APP_STATIC = APP_ROOT / "static"
+CACHE_TTL_SECONDS = int(os.environ.get("CACHE_TTL_SECONDS", "60"))
+URL_TIMEOUT_SECONDS = int(os.environ.get("URL_TIMEOUT_SECONDS", "20"))
+CHANNELS = ("stable", "beta", "dev")
 
 app = Flask(__name__)
 
-API_URL = 'http://tools.google.com/service/update2'
-APP_ROOT = os.path.dirname(os.path.abspath(__file__))
-APP_STATIC = os.path.join(APP_ROOT, 'static')
-MEMCACHE_SERVERS =  os.environ.get('MEMCACHIER_SERVERS', '')
-MEMCACHE_USERNAME = os.environ.get('MEMCACHIER_USERNAME', '')
-MEMCACHE_PASSWORD = os.environ.get('MEMCACHIER_PASSWORD', '')
 
-with open(os.path.join(APP_STATIC, 'post_data_stable.xml')) as f:
-    POST_DATA_STABLE = f.read().replace('\n', '')
-
-with open(os.path.join(APP_STATIC, 'post_data_beta.xml')) as f:
-    POST_DATA_BETA = f.read().replace('\n', '')
-
-with open(os.path.join(APP_STATIC, 'post_data_dev.xml')) as f:
-    POST_DATA_DEV = f.read().replace('\n', '')
-
-post_data = OrderedDict([('stable', POST_DATA_STABLE),
-                         ('beta', POST_DATA_BETA),
-                         ('dev', POST_DATA_DEV)])
-
-if MEMCACHE_SERVERS:
-    client = Client([MEMCACHE_SERVERS], behaviors={"tcp_nodelay": True},
-                    binary=True, username=MEMCACHE_USERNAME, password=MEMCACHE_PASSWORD)
-else:
-    client = Client(['127.0.0.1:11211'])
-cache = MemcachedCache(client, default_timeout=60)
+def load_post_data() -> "OrderedDict[str, bytes]":
+    """Load Google Update request payloads for each supported channel."""
+    payloads: "OrderedDict[str, bytes]" = OrderedDict()
+    for channel in CHANNELS:
+        payload = (APP_STATIC / f"post_data_{channel}.xml").read_text(encoding="utf-8")
+        payloads[channel] = payload.replace("\n", "").encode("utf-8")
+    return payloads
 
 
-def cached(timeout=60):
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            key = args[0]
-            rv = cache.get(key)
-            if rv is not None:
-                print 'hit\t\t', key
-                return rv
-            print 'miss\t\t', key
-            rv = f(*args, **kwargs)
-            cache.set(key, rv, timeout=timeout)
-            return rv
-        return decorated_function
-    return decorator
+post_data = load_post_data()
 
 
-@cached()
-def get_response(channel):
-    req = urllib2.Request(API_URL, post_data[channel])
-    r = urllib2.urlopen(req).read()
-    root = fromstring(r)
-    package = root.find('app/updatecheck/manifest/packages/package').attrib['name']
-    return [i.attrib['codebase'] + package for i in root.findall('app/updatecheck/urls/url')]
+@dataclass
+class CacheEntry:
+    expires_at: float
+    value: list[str]
 
 
-@app.route('/')
-@app.route('/channel/')
-@app.route('/channel/<channel>')
-def show_link(channel='stable'):
+class TTLCache:
+    """Tiny in-process TTL cache for channel responses."""
+
+    def __init__(self, time_func: Callable[[], float] = time.time):
+        self._entries: dict[str, CacheEntry] = {}
+        self._time = time_func
+
+    def get(self, key: str) -> list[str] | None:
+        entry = self._entries.get(key)
+        if entry is None:
+            return None
+        if entry.expires_at <= self._time():
+            self._entries.pop(key, None)
+            return None
+        return list(entry.value)
+
+    def set(self, key: str, value: list[str], timeout: int = CACHE_TTL_SECONDS) -> None:
+        self._entries[key] = CacheEntry(self._time() + timeout, list(value))
+
+    def clear(self) -> None:
+        self._entries.clear()
+
+
+cache = TTLCache()
+
+
+class ChromeUpdateError(RuntimeError):
+    """Raised when Google Update does not return installer metadata."""
+
+
+def parse_installer_urls(xml_body: bytes) -> list[str]:
+    """Parse Google Update XML and return full installer URLs."""
+    root = ElementTree.fromstring(xml_body)
+    package = root.find("app/updatecheck/manifest/packages/package")
+    urls = root.findall("app/updatecheck/urls/url")
+
+    if package is None or "name" not in package.attrib or not urls:
+        status = root.find("app/updatecheck")
+        status_text = status.attrib.get("status", "unknown") if status is not None else "unknown"
+        raise ChromeUpdateError(f"Google Update response did not include installer URLs: {status_text}")
+
+    package_name = package.attrib["name"]
+    return [url.attrib["codebase"] + package_name for url in urls if "codebase" in url.attrib]
+
+
+def fetch_installer_urls(channel: str) -> list[str]:
+    """Fetch installer URLs for a channel from Google Update."""
+    request = Request(
+        API_URL,
+        data=post_data[channel],
+        headers={"Content-Type": "text/xml; charset=UTF-8"},
+        method="POST",
+    )
+    try:
+        with urlopen(request, timeout=URL_TIMEOUT_SECONDS) as response:
+            return parse_installer_urls(response.read())
+    except (HTTPError, URLError, TimeoutError, ElementTree.ParseError) as exc:
+        raise ChromeUpdateError(f"Unable to fetch Chrome installer URLs for {channel}") from exc
+
+
+def get_response(channel: str) -> list[str]:
+    cached_value = cache.get(channel)
+    if cached_value is not None:
+        app.logger.debug("cache hit: %s", channel)
+        return cached_value
+
+    app.logger.debug("cache miss: %s", channel)
+    urls = fetch_installer_urls(channel)
+    cache.set(channel, urls)
+    return urls
+
+
+@app.route("/")
+@app.route("/channel/")
+@app.route("/channel/<channel>")
+def show_link(channel: str = "stable"):
+    if channel not in (*CHANNELS, "all"):
+        return redirect("/channel/stable")
+
     links = OrderedDict()
-    for key in post_data.iterkeys():
-        if channel == key or channel == 'all':
+    for key in CHANNELS:
+        if channel in (key, "all"):
             links[key] = get_response(key)
-    if links:
-        return render_template('index.html', links=links)
-    else:
-        return redirect('/channel/stable')
+    return render_template("index.html", links=links)
 
-if __name__ == '__main__':
-    from werkzeug.contrib.profiler import ProfilerMiddleware
-    f = open('profiler.log', 'w')
-    app.wsgi_app = ProfilerMiddleware(app.wsgi_app, f)
-    app.run(host='0.0.0.0', debug=True)
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "5000")), debug=True)

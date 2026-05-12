@@ -1,14 +1,14 @@
-FROM python:2-alpine
+FROM python:3.12-alpine
 
-RUN mkdir -p /usr/src/app
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
 WORKDIR /usr/src/app
 
-RUN apk --update add libmemcached-dev
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
 
-COPY requirements.txt /usr/src/app/
+COPY . .
 
-RUN apk --update add  --virtual build-dependencies build-base zlib-dev \
-    && pip install --no-cache-dir -r requirements.txt \
-    && apk del build-dependencies
-
-COPY . /usr/src/app
+EXPOSE 5000
+CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:5000", "--log-file", "-"]
